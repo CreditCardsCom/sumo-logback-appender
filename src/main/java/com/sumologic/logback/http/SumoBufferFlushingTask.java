@@ -82,7 +82,7 @@ public class SumoBufferFlushingTask extends BufferFlushingTask<String, String> {
 	protected String aggregate(List<String> messages) {
 		StringBuilder builder = new StringBuilder(messages.size() * 10);
 		for (String message : messages) {
-			builder.append(message);
+			builder.append(message + "\r\n");
 		}
 		return builder.toString();
 	}

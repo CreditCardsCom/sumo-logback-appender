@@ -27,6 +27,7 @@
 package com.sumologic.logback;
 
 import com.sumologic.logback.aggregation.SumoBufferFlusher;
+import com.sumologic.logback.http.ProxySettings;
 import com.sumologic.logback.http.SumoHttpSender;
 import com.sumologic.logback.queue.BufferWithEviction;
 import com.sumologic.logback.queue.BufferWithFifoEviction;
@@ -36,6 +37,8 @@ import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.AppenderBase;
 import ch.qos.logback.core.Layout;
 import lombok.extern.slf4j.Slf4j;
+
+import java.io.IOException;
 
 import static com.sumologic.logback.queue.CostBoundedConcurrentQueue.CostAssigner;
 
@@ -50,6 +53,15 @@ public class BufferedSumoLogicAppender extends AppenderBase<ILoggingEvent> {
     private Layout<ILoggingEvent> layout;
 
     private String url = null;
+
+    private String proxyHost = null;
+    private int proxyPort = -1;
+    private String proxyAuth = null;
+    private String proxyUser = null;
+    private String proxyPassword = null;
+    private String proxyDomain = null;
+    private String name = null;
+
     private int connectionTimeout = 1000;
     private int socketTimeout = 60000;
     private int retryInterval = 10000;        // Once a request fails, how often until we retry.
@@ -104,6 +116,54 @@ public class BufferedSumoLogicAppender extends AppenderBase<ILoggingEvent> {
         this.retryInterval = retryInterval;
     }
 
+    public String getProxyHost() {
+        return proxyHost;
+    }
+
+    public void setProxyHost(String proxyHost) {
+        this.proxyHost = proxyHost;
+    }
+
+    public int getProxyPort() {
+        return proxyPort;
+    }
+
+    public void setProxyPort(int proxyPort) {
+        this.proxyPort = proxyPort;
+    }
+
+    public String getProxyAuth() {
+        return proxyAuth;
+    }
+
+    public void setProxyAuth(String proxyAuth) {
+        this.proxyAuth = proxyAuth;
+    }
+
+    public String getProxyUser() {
+        return proxyUser;
+    }
+
+    public void setProxyUser(String proxyUser) {
+        this.proxyUser = proxyUser;
+    }
+
+    public String getProxyPassword() {
+        return proxyPassword;
+    }
+
+    public void setProxyPassword(String proxyPassword) {
+        this.proxyPassword = proxyPassword;
+    }
+
+    public String getProxyDomain() {
+        return proxyDomain;
+    }
+
+    public void setProxyDomain(String proxyDomain) {
+        this.proxyDomain = proxyDomain;
+    }
+
     @Override
     public void start() {
         super.start();
@@ -131,6 +191,14 @@ public class BufferedSumoLogicAppender extends AppenderBase<ILoggingEvent> {
         sender.setConnectionTimeout(connectionTimeout);
         sender.setSocketTimeout(socketTimeout);
         sender.setUrl(url);
+
+        sender.setProxySettings(new ProxySettings(
+                proxyHost,
+                proxyPort,
+                proxyAuth,
+                proxyUser,
+                proxyPassword,
+                proxyDomain));
 
         sender.init();
 
@@ -174,9 +242,12 @@ public class BufferedSumoLogicAppender extends AppenderBase<ILoggingEvent> {
     @Override
     public void stop() {
         super.stop();
-        sender.close();
+        try {
+            sender.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         sender = null;
-
         flusher.stop();
         flusher = null;
     }
