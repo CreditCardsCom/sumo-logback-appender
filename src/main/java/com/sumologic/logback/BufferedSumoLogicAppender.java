@@ -60,7 +60,6 @@ public class BufferedSumoLogicAppender extends AppenderBase<ILoggingEvent> {
     private String proxyUser = null;
     private String proxyPassword = null;
     private String proxyDomain = null;
-    private String name = null;
 
     private int connectionTimeout = 1000;
     private int socketTimeout = 60000;
@@ -69,7 +68,10 @@ public class BufferedSumoLogicAppender extends AppenderBase<ILoggingEvent> {
     private long messagesPerRequest = 100;    // How many messages need to be in the queue before we flush
     private long maxFlushInterval = 10000;    // Maximum interval between flushes (ms)
     private long flushingAccuracy = 250;      // How often the flushed thread looks into the message queue (ms)
+
     private String sourceName = "sumo-logback-appender"; // Name to stamp for querying with _sourceName
+    private String sourceHost = null;
+    private String sourceCategory = null;
 
     private long maxQueueSizeBytes = 1000000;
 
@@ -99,6 +101,10 @@ public class BufferedSumoLogicAppender extends AppenderBase<ILoggingEvent> {
     public void setSourceName(String sourceName) {
         this.sourceName = sourceName;
     }
+
+    public void setSourceHost(String sourceHost) { this.sourceHost = sourceHost; }
+
+    public void setSourceCategory(String sourceCategory) { this.sourceCategory = sourceCategory; }
 
     public void setFlushingAccuracy(long flushingAccuracy) {
         this.flushingAccuracy = flushingAccuracy;
@@ -210,6 +216,8 @@ public class BufferedSumoLogicAppender extends AppenderBase<ILoggingEvent> {
                     messagesPerRequest,
                     maxFlushInterval,
                     sourceName,
+                    sourceHost,
+                    sourceCategory,
                     sender,
                     queue);
         flusher.start();
@@ -243,13 +251,13 @@ public class BufferedSumoLogicAppender extends AppenderBase<ILoggingEvent> {
     public void stop() {
         super.stop();
         try {
+            sender = null;
             sender.close();
+            flusher.stop();
+            flusher = null;
         } catch (IOException e) {
             e.printStackTrace();
         }
-        sender = null;
-        flusher.stop();
-        flusher = null;
     }
 
     // Private bits.

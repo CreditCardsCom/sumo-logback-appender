@@ -61,7 +61,7 @@ public abstract class BufferFlushingTask<In, Out> implements Runnable {
 					messages.size(),
 					messageQueue.size()));
 			Out body = aggregate(messages);
-			sendOut(body, getName());
+			sendOut(body, getSourceName(), getSourceHost(), getSourceCategory());
 		}
 	}
 
@@ -72,7 +72,11 @@ public abstract class BufferFlushingTask<In, Out> implements Runnable {
 
 	abstract protected long getMessagesPerRequest();
 
-	abstract protected String getName();
+	abstract protected String getSourceName();
+
+	abstract protected String getSourceHost();
+
+	abstract protected String getSourceCategory();
 
 	protected BufferFlushingTask(BufferWithEviction<In> messageQueue) {
 		this.messageQueue = messageQueue;
@@ -82,7 +86,7 @@ public abstract class BufferFlushingTask<In, Out> implements Runnable {
 	abstract protected Out aggregate(List<In> messages);
 
 	// Send aggregated message out. Block until we've successfully sent it.
-	abstract protected void sendOut(Out body, String name);
+	abstract protected void sendOut(Out body, String name, String host, String sourceCategory);
 
 
 

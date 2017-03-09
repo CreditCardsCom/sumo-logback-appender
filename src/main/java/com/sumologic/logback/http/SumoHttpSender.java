@@ -27,6 +27,7 @@ package com.sumologic.logback.http;
 
 import java.io.IOException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.*;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpPost;
@@ -104,15 +105,15 @@ public class SumoHttpSender {
         httpClient = null;
     }
 
-    public void send(String body, String name) {
-        keepTrying(body, name);
+    public void send(String body, String sourceName, String host, String sourceCategory) {
+        keepTrying(body, sourceName, host, sourceCategory);
     }
 
-    private void keepTrying(String body, String name) {
+    private void keepTrying(String body, String sourceName, String host, String sourceCategory) {
         boolean success = false;
         do {
             try {
-                trySend(body, name);
+                trySend(body, sourceName, host, sourceCategory);
                 success = true;
             } catch (Exception e) {
                 try {
@@ -125,14 +126,20 @@ public class SumoHttpSender {
     }
 
 
-    private void trySend(String body, String name) throws IOException {
+    private void trySend(String body, String sourceName, String sourceHost, String sourceCategory) throws IOException {
         HttpPost post = null;
         try {
             if (url == null)
                 throw new IOException("Unknown endpoint");
 
             post = new HttpPost(url);
-            post.setHeader("X-Sumo-Name", name);
+            post.setHeader("X-Sumo-Name", sourceName);
+            if (!StringUtils.isEmpty(sourceHost)) {
+                post.setHeader("X-Sumo-Host", sourceHost);
+            }
+            if (!StringUtils.isEmpty(sourceCategory)) {
+                post.setHeader("X-Sumo-Category", sourceCategory);
+            }
             post.setEntity(new StringEntity(body, Consts.UTF_8));
             HttpResponse response = httpClient.execute(post);
             int statusCode = response.getStatusLine().getStatusCode();
