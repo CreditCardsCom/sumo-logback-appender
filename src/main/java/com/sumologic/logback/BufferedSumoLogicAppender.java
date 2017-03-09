@@ -251,10 +251,15 @@ public class BufferedSumoLogicAppender extends AppenderBase<ILoggingEvent> {
     public void stop() {
         super.stop();
         try {
-            sender = null;
-            sender.close();
-            flusher.stop();
-            flusher = null;
+            if (sender != null) {
+                sender.close();
+                sender = null;
+            }
+
+            if (flusher != null) {
+                flusher.stop();
+                flusher = null;
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
