@@ -41,15 +41,21 @@ public class SumoBufferFlushingTask extends BufferFlushingTask<String, String> {
 	private SumoHttpSender sender;
 	private long           maxFlushInterval;
 	private long           messagesPerRequest;
-	private String         name;
+	private String 		   sourceName;
+	private String         sourceHost;
+	private String         sourceCategory;
 
 	public SumoBufferFlushingTask(BufferWithEviction<String> queue) {
 		super(queue);
 	}
 
-	public void setName(String name) {
-		this.name = name;
+	public void setSourceName(String sourceName) {
+		this.sourceName = sourceName;
 	}
+
+	public void setSourceHost(String sourceHost) { this.sourceHost = sourceHost; }
+
+	public void setSourceCategory(String sourceCategory) { this.sourceCategory = sourceCategory; }
 
 	public void setSender(SumoHttpSender sender) {
 		this.sender = sender;
@@ -73,24 +79,32 @@ public class SumoBufferFlushingTask extends BufferFlushingTask<String, String> {
 		return messagesPerRequest;
 	}
 
+	protected String getSourceName() {
+		return sourceName;
+	}
+
+	protected String getSourceHost() {
+		return sourceHost;
+	}
+
 	@Override
-	protected String getName() {
-		return name;
+	protected String getSourceCategory() {
+		return sourceCategory;
 	}
 
 	@Override
 	protected String aggregate(List<String> messages) {
 		StringBuilder builder = new StringBuilder(messages.size() * 10);
 		for (String message : messages) {
-			builder.append(message);
+			builder.append(message + "\r\n");
 		}
 		return builder.toString();
 	}
 
 	@Override
-	protected void sendOut(String body, String name) {
+	protected void sendOut(String body, String name, String sourceHost, String sourceCategory) {
 		if (sender.isInitialized()) {
-			sender.send(body, name);
+			sender.send(body, name, sourceHost, sourceCategory);
 		} else {
 			log.error("HTTPSender is not initialized");
 

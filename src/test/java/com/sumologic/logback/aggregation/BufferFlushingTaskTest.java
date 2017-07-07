@@ -67,10 +67,18 @@ public class BufferFlushingTaskTest {
                 return 3;
             }
 
-            @Override
-            protected String getName() {
+            protected String getSourceName() {
                 return "No-name";
             }
+
+            protected String getSourceCategory() {
+                return "null";
+            }
+
+            protected String getSourceHost() {
+                return "null";
+            }
+
 
             @Override
             protected List<String> aggregate(List<String> messages) {
@@ -78,7 +86,7 @@ public class BufferFlushingTaskTest {
             }
 
             @Override
-            protected void sendOut(List<String> body, String name) {
+            protected void sendOut(List<String> body, String sourceName, String sourceCategory, String sourceHost) {
                 tasks.add(body);
             }
         };
