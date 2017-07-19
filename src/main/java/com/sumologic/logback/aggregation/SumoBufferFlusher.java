@@ -46,6 +46,8 @@ public class SumoBufferFlusher {
             long messagesPerRequest,
             long maxFlushInterval,
             String sourceName,
+            String sourceHost,
+            String sourceCategory,
             SumoHttpSender sender,
             BufferWithEviction<String> buffer) {
 
@@ -55,7 +57,9 @@ public class SumoBufferFlusher {
 
         flushingTask.setMessagesPerRequest(messagesPerRequest);
         flushingTask.setMaxFlushInterval(maxFlushInterval);
-        flushingTask.setName(sourceName);
+        flushingTask.setSourceName(sourceName);
+        flushingTask.setSourceHost(sourceHost);
+        flushingTask.setSourceCategory(sourceCategory);
         flushingTask.setSender(sender);
     }
 

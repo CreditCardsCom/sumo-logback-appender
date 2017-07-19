@@ -27,6 +27,7 @@
 package com.sumologic.logback;
 
 import com.sumologic.logback.aggregation.SumoBufferFlusher;
+import com.sumologic.logback.http.ProxySettings;
 import com.sumologic.logback.http.SumoHttpSender;
 import com.sumologic.logback.queue.BufferWithEviction;
 import com.sumologic.logback.queue.BufferWithFifoEviction;
@@ -36,6 +37,8 @@ import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.AppenderBase;
 import ch.qos.logback.core.Layout;
 import lombok.extern.slf4j.Slf4j;
+
+import java.io.IOException;
 
 import static com.sumologic.logback.queue.CostBoundedConcurrentQueue.CostAssigner;
 
@@ -50,6 +53,14 @@ public class BufferedSumoLogicAppender extends AppenderBase<ILoggingEvent> {
     private Layout<ILoggingEvent> layout;
 
     private String url = null;
+
+    private String proxyHost = null;
+    private int proxyPort = -1;
+    private String proxyAuth = null;
+    private String proxyUser = null;
+    private String proxyPassword = null;
+    private String proxyDomain = null;
+
     private int connectionTimeout = 1000;
     private int socketTimeout = 60000;
     private int retryInterval = 10000;        // Once a request fails, how often until we retry.
@@ -57,7 +68,10 @@ public class BufferedSumoLogicAppender extends AppenderBase<ILoggingEvent> {
     private long messagesPerRequest = 100;    // How many messages need to be in the queue before we flush
     private long maxFlushInterval = 10000;    // Maximum interval between flushes (ms)
     private long flushingAccuracy = 250;      // How often the flushed thread looks into the message queue (ms)
+
     private String sourceName = "sumo-logback-appender"; // Name to stamp for querying with _sourceName
+    private String sourceHost = null;
+    private String sourceCategory = null;
 
     private long maxQueueSizeBytes = 1000000;
 
@@ -88,6 +102,10 @@ public class BufferedSumoLogicAppender extends AppenderBase<ILoggingEvent> {
         this.sourceName = sourceName;
     }
 
+    public void setSourceHost(String sourceHost) { this.sourceHost = sourceHost; }
+
+    public void setSourceCategory(String sourceCategory) { this.sourceCategory = sourceCategory; }
+
     public void setFlushingAccuracy(long flushingAccuracy) {
         this.flushingAccuracy = flushingAccuracy;
     }
@@ -102,6 +120,54 @@ public class BufferedSumoLogicAppender extends AppenderBase<ILoggingEvent> {
 
     public void setRetryInterval(int retryInterval) {
         this.retryInterval = retryInterval;
+    }
+
+    public String getProxyHost() {
+        return proxyHost;
+    }
+
+    public void setProxyHost(String proxyHost) {
+        this.proxyHost = proxyHost;
+    }
+
+    public int getProxyPort() {
+        return proxyPort;
+    }
+
+    public void setProxyPort(int proxyPort) {
+        this.proxyPort = proxyPort;
+    }
+
+    public String getProxyAuth() {
+        return proxyAuth;
+    }
+
+    public void setProxyAuth(String proxyAuth) {
+        this.proxyAuth = proxyAuth;
+    }
+
+    public String getProxyUser() {
+        return proxyUser;
+    }
+
+    public void setProxyUser(String proxyUser) {
+        this.proxyUser = proxyUser;
+    }
+
+    public String getProxyPassword() {
+        return proxyPassword;
+    }
+
+    public void setProxyPassword(String proxyPassword) {
+        this.proxyPassword = proxyPassword;
+    }
+
+    public String getProxyDomain() {
+        return proxyDomain;
+    }
+
+    public void setProxyDomain(String proxyDomain) {
+        this.proxyDomain = proxyDomain;
     }
 
     @Override
@@ -132,6 +198,14 @@ public class BufferedSumoLogicAppender extends AppenderBase<ILoggingEvent> {
         sender.setSocketTimeout(socketTimeout);
         sender.setUrl(url);
 
+        sender.setProxySettings(new ProxySettings(
+                proxyHost,
+                proxyPort,
+                proxyAuth,
+                proxyUser,
+                proxyPassword,
+                proxyDomain));
+
         sender.init();
 
         /* Initialize flusher  */
@@ -142,6 +216,8 @@ public class BufferedSumoLogicAppender extends AppenderBase<ILoggingEvent> {
                     messagesPerRequest,
                     maxFlushInterval,
                     sourceName,
+                    sourceHost,
+                    sourceCategory,
                     sender,
                     queue);
         flusher.start();
@@ -174,11 +250,19 @@ public class BufferedSumoLogicAppender extends AppenderBase<ILoggingEvent> {
     @Override
     public void stop() {
         super.stop();
-        sender.close();
-        sender = null;
+        try {
+            if (sender != null) {
+                sender.close();
+                sender = null;
+            }
 
-        flusher.stop();
-        flusher = null;
+            if (flusher != null) {
+                flusher.stop();
+                flusher = null;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     // Private bits.

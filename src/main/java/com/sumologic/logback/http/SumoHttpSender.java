@@ -27,16 +27,15 @@ package com.sumologic.logback.http;
 
 import java.io.IOException;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.http.*;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpConnectionParams;
-import org.apache.http.params.HttpParams;
-import org.apache.http.protocol.HTTP;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.util.EntityUtils;
 
 import lombok.extern.slf4j.Slf4j;
@@ -50,9 +49,19 @@ public class SumoHttpSender {
     private long retryInterval = 10000L;
 
     private volatile String url = null;
+    private volatile ProxySettings proxySettings = null;
+
     private int connectionTimeout = 1000;
     private int socketTimeout = 60000;
-    private volatile HttpClient httpClient = null;
+    private volatile CloseableHttpClient httpClient = null;
+
+    public ProxySettings getProxySettings() {
+        return proxySettings;
+    }
+
+    public void setProxySettings(ProxySettings proxySettings) {
+        this.proxySettings = proxySettings;
+    }
 
 
     public void setRetryInterval(long retryInterval) {
@@ -76,26 +85,35 @@ public class SumoHttpSender {
     }
 
     public void init() {
-        HttpParams params = new BasicHttpParams();
-        HttpConnectionParams.setConnectionTimeout(params, connectionTimeout);
-        HttpConnectionParams.setSoTimeout(params, socketTimeout);
-        httpClient = new DefaultHttpClient(new ThreadSafeClientConnManager(), params);
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setSocketTimeout(socketTimeout)
+                .setConnectTimeout(connectionTimeout)
+                .build();
+
+        HttpClientBuilder builder = HttpClients.custom()
+                .setConnectionManager(new PoolingHttpClientConnectionManager())
+                .setDefaultRequestConfig(requestConfig);
+
+        HttpProxySettingsCreator creator = new HttpProxySettingsCreator(proxySettings);
+        creator.configureProxySettings(builder);
+
+        httpClient = builder.build();
     }
 
-    public void close() {
-        httpClient.getConnectionManager().shutdown();
+    public void close() throws IOException {
+        httpClient.close();
         httpClient = null;
     }
 
-    public void send(String body, String name) {
-        keepTrying(body, name);
+    public void send(String body, String sourceName, String host, String sourceCategory) {
+        keepTrying(body, sourceName, host, sourceCategory);
     }
 
-    private void keepTrying(String body, String name) {
+    private void keepTrying(String body, String sourceName, String host, String sourceCategory) {
         boolean success = false;
         do {
             try {
-                trySend(body, name);
+                trySend(body, sourceName, host, sourceCategory);
                 success = true;
             } catch (Exception e) {
                 try {
@@ -107,15 +125,22 @@ public class SumoHttpSender {
         } while (!success && !Thread.currentThread().isInterrupted());
     }
 
-    private void trySend(String body, String name) throws IOException {
+
+    private void trySend(String body, String sourceName, String sourceHost, String sourceCategory) throws IOException {
         HttpPost post = null;
         try {
             if (url == null)
                 throw new IOException("Unknown endpoint");
 
             post = new HttpPost(url);
-            post.setHeader("X-Sumo-Name", name);
-            post.setEntity(new StringEntity(body, HTTP.PLAIN_TEXT_TYPE, HTTP.UTF_8));
+            post.setHeader("X-Sumo-Name", sourceName);
+            if (!StringUtils.isEmpty(sourceHost)) {
+                post.setHeader("X-Sumo-Host", sourceHost);
+            }
+            if (!StringUtils.isEmpty(sourceCategory)) {
+                post.setHeader("X-Sumo-Category", sourceCategory);
+            }
+            post.setEntity(new StringEntity(body, Consts.UTF_8));
             HttpResponse response = httpClient.execute(post);
             int statusCode = response.getStatusLine().getStatusCode();
             if (statusCode != 200) {
