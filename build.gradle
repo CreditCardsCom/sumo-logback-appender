@@ -1,4 +1,4 @@
-group = "com.sumologic.logback"
+group = "sumo-logback-appender"
 version = "1.0.3.9"
 
 buildscript {
@@ -52,7 +52,7 @@ publishing {
         MainPublication(MavenPublication) {
             from components.java
             groupId project.group
-            artifactId 'common'
+            artifactId 'sumo-logback-appender'
             version project.version
 
             artifact sourcesJar
