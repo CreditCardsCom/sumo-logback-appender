@@ -87,15 +87,3 @@ task sourcesJar(type: Jar, dependsOn: classes) {
 artifacts {
     archives sourcesJar
 }
-
-sourceSets {
-    main {
-        java {
-            srcDir 'src/main/java'
-        }
-    }
-
-    test {
-        java.srcDirs = ['test']
-    }
-}
